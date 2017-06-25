@@ -1,11 +1,34 @@
 package ukvd
 
 import (
+	"os"
 	"testing"
 )
 
-func TestInvalidRegistration(t *testing.T) {
-	vd := NewUKVD("71adfc85-6aa0-488d-b40d-7f2d63a56186")
-	details, err := vd.Search("KLM123")
-	fmt.Println("details")
+var vd *UKVD
+
+func init() {
+	vd = NewUKVD(os.Getenv("UKVD_API_KEY"))
+	vd.SetLog(true)
+}
+
+func TestVDICheckBasicInvalidRegistration(t *testing.T) {
+	_, err := vd.VDICheckBasic("KLM123")
+	if err != KeyInvalidError {
+		t.Error(err)
+	}
+}
+
+func TestVDICheckFinanceInvalidRegistration(t *testing.T) {
+	_, err := vd.VDICheckFinance("KLM123")
+	if err != KeyInvalidError {
+		t.Error(err)
+	}
+}
+
+func TestVDICheckFullInvalidRegistration(t *testing.T) {
+	_, err := vd.VDICheckFull("KLM123")
+	if err != KeyInvalidError {
+		t.Error(err)
+	}
 }

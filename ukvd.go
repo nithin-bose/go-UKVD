@@ -2,7 +2,6 @@ package ukvd
 
 import (
 	"bytes"
-	"encoding/base64"
 	"encoding/json"
 	"errors"
 	"io/ioutil"
@@ -64,7 +63,7 @@ func (this *UKVD) search(vrm string, dataPackage string, result interface{}) err
 		log.Println("Header:", req.Header)
 		if buf != nil {
 			log.Println("Payload:")
-			log.Println(base64.StdEncoding.EncodeToString(buf.Bytes()))
+			log.Println(buf.String())
 		}
 	}
 
@@ -78,6 +77,12 @@ func (this *UKVD) search(vrm string, dataPackage string, result interface{}) err
 	if err != nil {
 		return err
 	}
+
+  // Debug log response
+	if this.log {
+    log.Println("Response:")
+    log.Println(string(body))
+  }
 
 	if string(body) != "" {
 		err = json.Unmarshal(body, result)
