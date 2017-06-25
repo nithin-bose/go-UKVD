@@ -1,83 +1,152 @@
 package ukvd
 
 import (
-  "bytes"
-  "net/http"
-  "encoding/json"
-  "time"
-  "io/ioutil"
+	"bytes"
+	"encoding/base64"
+	"encoding/json"
+	"errors"
+	"io/ioutil"
+	"log"
+	"net/http"
+	"time"
 )
 
-func NewUKVD(key string) *UKVD {
-  ukvd := &UKVD{
-      apiKey: key,
-      dataPackage: "VehicleData",
-  }
-  return ukvd
+type UKVD struct {
+	apiKey string
+	log    bool
 }
 
-func (this *UKVD) Search(vrm string) (*VehicleData, error) {
-  url := "https://uk1.ukvehicledata.co.uk/api/datapackage/" + this.dataPackage
-  params := make(map[string]string)
-  params["v"] = "2"
-  params["api_nullitems"] = "1"
-  params["key_vrm"] = vrm
+func NewUKVD(key string) *UKVD {
+	ukvd := &UKVD{
+		apiKey: key,
+		log:    false,
+	}
+	return ukvd
+}
 
-  b, err := json.Marshal(&params)
+func (this *UKVD) SetLog(log bool) {
+	this.log = log
+}
+
+func (this *UKVD) search(vrm string, dataPackage string, result interface{}) error {
+	url := "https://uk1.ukvehicledata.co.uk/api/datapackage/" + dataPackage
+	params := make(map[string]string)
+	params["v"] = "2"
+	params["api_nullitems"] = "0"
+	params["key_vrm"] = vrm
+
+	b, err := json.Marshal(&params)
 	if err != nil {
-		return nil, err
+		return err
 	}
-  buf := bytes.NewBuffer(b)
+	buf := bytes.NewBuffer(b)
 
-  req, err := http.NewRequest("GET", url, buf)
-  if err != nil {
-		return nil, err
-  }
-  req.Header.Add("cache-control", "no-cache")
-  req.Header.Add("content-type", "application/json; charset=utf-8")
-  req.Header.Add("Authorization", "ukvd-ipwhitelist " + this.apiKey)
+	req, err := http.NewRequest("GET", url, buf)
+	if err != nil {
+		return err
+	}
+	req.Header.Add("cache-control", "no-cache")
+	req.Header.Add("content-type", "application/json; charset=utf-8")
+	req.Header.Add("Authorization", "ukvd-ipwhitelist "+this.apiKey)
 
-  timeout := time.Duration(time.Duration(10) * time.Second)
-  client := &http.Client{
-			Timeout: timeout,
+	timeout := time.Duration(time.Duration(10) * time.Second)
+	client := &http.Client{
+		Timeout: timeout,
 	}
 
-  // Debug log request
+	// Debug log request
 	if this.log {
-		s.log("--------------------------------------------------------------------------------")
-		s.log("REQUEST")
-		s.log("--------------------------------------------------------------------------------")
-		s.log("Method:", req.Method)
-		s.log("URL:", req.URL)
-		s.log("Header:", req.Header)
-		s.log("Form:", req.Form)
-		s.log("Payload:")
-		if r.RawPayload && s.Log && buf != nil {
-			s.log(base64.StdEncoding.EncodeToString(buf.Bytes()))
-		} else {
-			s.log(pretty(r.Payload))
+		log.Println("--------------------------------------------------------------------------------")
+		log.Println("REQUEST")
+		log.Println("--------------------------------------------------------------------------------")
+		log.Println("Method:", req.Method)
+		log.Println("URL:", req.URL)
+		log.Println("Header:", req.Header)
+		if buf != nil {
+			log.Println("Payload:")
+			log.Println(base64.StdEncoding.EncodeToString(buf.Bytes()))
 		}
 	}
 
-
-  resp, err := client.Do(req)
+	resp, err := client.Do(req)
 	if err != nil {
-		return nil, err
-  }
-  defer resp.Body.Close()
+		return err
+	}
+	defer resp.Body.Close()
 
-  body, err := ioutil.ReadAll(resp.Body)
+	body, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
-		return nil, err
-  }
-  result := &VehicleData{}
-  if string(body) != "" {
+		return err
+	}
+
+	if string(body) != "" {
 		err = json.Unmarshal(body, result)
-    if err != nil {
-  		return nil, err
-    }
-  } else {
-    return nil, errors.New("Upstream error")
-  }
-  return result, nil
+		if err != nil {
+			return err
+		}
+	} else {
+		return errors.New("Upstream error")
+	}
+	return nil
+}
+
+func (this *UKVD) VDICheckBasic(vrm string) (*CheckBasicDataItems, error) {
+	result := CheckBasic{}
+	err := this.search(vrm, "VDICheckBasic", &result)
+	if err != nil {
+		return nil, err
+	}
+
+	err = parseResultStatus(result.Response.StatusCode)
+	if err != nil {
+		return nil, err
+	}
+	return &result.Response.DataItems, nil
+}
+
+func (this *UKVD) VDICheckFinance(vrm string) (*CheckFinanceDataItems, error) {
+	result := CheckFinance{}
+	err := this.search(vrm, "VDICheckFinance", &result)
+	if err != nil {
+		return nil, err
+	}
+
+	err = parseResultStatus(result.Response.StatusCode)
+	if err != nil {
+		return nil, err
+	}
+	return &result.Response.DataItems, nil
+}
+
+func (this *UKVD) VDICheckFull(vrm string) (*CheckFullDataItems, error) {
+	result := CheckFull{}
+	err := this.search(vrm, "VDICheckFull", &result)
+	if err != nil {
+		return nil, err
+	}
+
+	err = parseResultStatus(result.Response.StatusCode)
+	if err != nil {
+		return nil, err
+	}
+	return &result.Response.DataItems, nil
+}
+
+func parseResultStatus(statusCode string) error {
+	switch statusCode {
+	case "Failure":
+		return APIFailureError
+	case "InvalidPackageId":
+		return InvalidPackageIdError
+	case "ItemNotFound":
+		return ItemNotFoundError
+	case "KeyInvalid":
+		return KeyInvalidError
+	case "ServiceUnavailable":
+		return ServiceUnavailableError
+	case "InvalidPackageAccessClass":
+		return InvalidPackageAccessClassError
+	default:
+		return nil
+	}
 }
