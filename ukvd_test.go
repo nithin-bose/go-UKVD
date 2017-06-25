@@ -1,6 +1,7 @@
 package ukvd
 
 import (
+	"fmt"
 	"os"
 	"testing"
 )
@@ -31,4 +32,28 @@ func TestVDICheckFullInvalidRegistration(t *testing.T) {
 	if err != KeyInvalidError {
 		t.Error(err)
 	}
+}
+
+func TestVDICheckBasic(t *testing.T) {
+	details, err := vd.VDICheckBasic("KM12AKK")
+	if err != nil {
+		t.Error(err)
+	}
+	fmt.Println("details", details)
+}
+
+func TestVDICheckFinance(t *testing.T) {
+	details, err := vd.VDICheckFinance("KM12AKK")
+	if err != nil {
+		t.Error(err)
+	}
+	fmt.Println("details", details)
+}
+
+func TestVDICheckFull(t *testing.T) {
+	details, err := vd.VDICheckFull("KM12AKK")
+	if err != nil {
+		t.Error(err)
+	}
+	fmt.Println("details", details)
 }

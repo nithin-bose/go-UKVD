@@ -33,6 +33,7 @@ func (this *UKVD) search(vrm string, dataPackage string, result interface{}) err
 	params["v"] = "2"
 	params["api_nullitems"] = "0"
 	params["key_vrm"] = vrm
+	params["auth_apikey"] = this.apiKey
 
 	b, err := json.Marshal(&params)
 	if err != nil {
@@ -44,9 +45,9 @@ func (this *UKVD) search(vrm string, dataPackage string, result interface{}) err
 	if err != nil {
 		return err
 	}
-	req.Header.Add("cache-control", "no-cache")
-	req.Header.Add("content-type", "application/json; charset=utf-8")
-	req.Header.Add("Authorization", "ukvd-ipwhitelist "+this.apiKey)
+	// req.Header.Add("cache-control", "no-cache")
+	// req.Header.Add("content-type", "application/json; charset=utf-8")
+	// req.Header.Add("Authorization", "ukvd-ipwhitelist "+this.apiKey)
 
 	timeout := time.Duration(time.Duration(10) * time.Second)
 	client := &http.Client{
@@ -78,11 +79,11 @@ func (this *UKVD) search(vrm string, dataPackage string, result interface{}) err
 		return err
 	}
 
-  // Debug log response
+	// Debug log response
 	if this.log {
-    log.Println("Response:")
-    log.Println(string(body))
-  }
+		log.Println("Response:")
+		log.Println(string(body))
+	}
 
 	if string(body) != "" {
 		err = json.Unmarshal(body, result)
