@@ -1,12 +1,12 @@
 package ukvd
 
 import (
-	"bytes"
 	"encoding/json"
 	"errors"
 	"io/ioutil"
 	"log"
 	"net/http"
+	"net/url"
 	"time"
 )
 
@@ -28,23 +28,21 @@ func (this *UKVD) SetLog(log bool) {
 }
 
 func (this *UKVD) search(vrm string, dataPackage string, result interface{}) error {
-	url := "https://uk1.ukvehicledata.co.uk/api/datapackage/" + dataPackage
-	params := make(map[string]string)
-	params["v"] = "2"
-	params["api_nullitems"] = "0"
-	params["key_vrm"] = vrm
-	params["auth_apikey"] = this.apiKey
+	APIEndPoint := "https://uk1.ukvehicledata.co.uk/api/datapackage/" + dataPackage
 
-	b, err := json.Marshal(&params)
+	params := url.Values{}
+	params.Set("v", "2")
+	params.Set("api_nullitems", "0")
+	params.Set("key_vrm", vrm)
+	params.Set("auth_apikey", this.apiKey)
+
+	APIEndPoint = APIEndPoint + "?" + params.Encode()
+
+	req, err := http.NewRequest("GET", APIEndPoint, nil)
 	if err != nil {
 		return err
 	}
-	buf := bytes.NewBuffer(b)
 
-	req, err := http.NewRequest("GET", url, buf)
-	if err != nil {
-		return err
-	}
 	// req.Header.Add("cache-control", "no-cache")
 	// req.Header.Add("content-type", "application/json; charset=utf-8")
 	// req.Header.Add("Authorization", "ukvd-ipwhitelist "+this.apiKey)
@@ -62,10 +60,6 @@ func (this *UKVD) search(vrm string, dataPackage string, result interface{}) err
 		log.Println("Method:", req.Method)
 		log.Println("URL:", req.URL)
 		log.Println("Header:", req.Header)
-		if buf != nil {
-			log.Println("Payload:")
-			log.Println(buf.String())
-		}
 	}
 
 	resp, err := client.Do(req)
